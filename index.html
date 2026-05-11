@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Конвертер величин</title>
+    <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body>
+
+    <div class="converter">
+    <h1>Конвертер величин</h1>
+    
+    <div class="category-buttons">
+        <button class="cat-btn active" data-cat="length"><i>📏</i> Длина</button>
+        <button class="cat-btn" data-cat="mass"><i>⚖️</i> Масса</button>
+        <button class="cat-btn" data-cat="temp"><i>🌡️</i> Темп.</button>
+        <button class="cat-btn" data-cat="volume"><i>🧊</i> Объём</button>
+    </div>
+    <div class="input-group">
+        <label><i>🔢</i> Введите значение:</label>
+        <input type="number" id="input-value" value="1" step="any">
+    </div>
+    <div class="input-group">
+        <label><i>📤</i> Выберите исходную единицу:</label>
+        <div class="select-with-info">
+            <select id="from-unit" style="flex:1"></select>
+            <button class="info-btn" data-side="from" title="История единицы">📖</button>
+        </div>
+    </div>
+    <div class="input-group">
+        <label><i>📥</i> Выберите целевую единицу:</label>
+        <div class="select-with-info">
+            <select id="to-unit" style="flex:1"></select>
+            <button class="info-btn" data-side="to" title="История единицы">📖</button>
+        </div>
+    </div>
+    <div class="result">
+        🧾 Результат: <span id="result-value">—</span>
+    </div>
+     <div class="formula-block">
+        <button id="showFormulaBtn" class="formula-btn">Показать формулу конвертации</button>
+        <div id="formulaDisplay" class="formula-display" style="display: none;">
+            <span id="formulaText"></span>
+        </div>
+    </div>
+    <div class="footer-note">
+        📖 Нажмите на книгу, чтобы узнать об одной из единиц измерения!
+    </div>
+    </div>
+    <div id="historyModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span style="font-size: 32px;">📜</span>
+            <h3 id="modal-title">История единицы</h3>
+        </div>
+        <div class="modal-body" id="modal-body">
+            Загрузка...
+        </div>
+        <button class="close-modal" id="closeModalBtn">Закрыть</button>
+    </div>
+    </div>
+
+<script>
+    const lengthUnits = {
+        'мм': { name: 'Миллиметры (мм)', toMeters: v => v / 1000, fromMeters: v => v * 1000, history: 'Слово «миллиметр» появилось во Франции в конце XVIII века, когда ученые разрабатывали новую метрическую систему . За основу был взят метр — одна десятимиллионная часть четверти парижского меридиана, а приставка «милли-» (от латинского mille — «тысяча») стала обозначать тысячную долю.' },
+        'см': { name: 'Сантиметры (см)', toMeters: v => v / 100, fromMeters: v => v * 100, history: 'Сантиметр (сотая часть метра) введён в 1799 году. Широко распространён в быту и геометрии. Название от лат. centum — "сто".' },
+        'дм': { name: 'Дециметры (дм)', toMeters: v => v / 10, fromMeters: v => v * 10, history: 'Дециметр — это единица длины в метрической системе, равная одной десятой доле метра (1 дм = 0.1 м) или десяти сантиметрам (1 дм = 10 см). Название происходит от латинской приставки «деци» (deci), означающей «десять» (то есть десятая часть метра).' },
+        'м': { name: 'Метры (м)', toMeters: v => v, fromMeters: v => v, history: 'Метр — это основная единица длины в Международной системе единиц (СИ), от которой произошли все остальные (миллиметры, сантиметры, дециметры, километры). Исторически метр был определен в конце XVIII века во Франции как одна десятимиллионная часть четверти Парижского меридиана (расстояние от экватора до Северного полюса по линии через Париж).' },
+        'км': { name: 'Километры (км)', toMeters: v => v * 1000, fromMeters: v => v / 1000, history: 'Километр = 1000 метров. Введён во Франции в конце XVIII века для удобства измерения больших расстояний. От греческого "chilioi" — тысяча.' },
+        'миля': { name: 'Мили (миля)', toMeters: v => v * 1609.344, fromMeters: v => v / 1609.344, history: 'Миля — это единица измерения длины, которая не входит в метрическую систему и имеет несколько разных значений в зависимости от страны и сферы применения. Самая распространённая — сухопутная (статутная) миля, используемая в США, Великобритании и других англоязычных странах. Она равна 1609 метров 34 сантиметра (точно — 1609,344 м).' },
+        'дюйм': { name: 'Дюймы (дюйм)', toMeters: v => v * 0.0254, fromMeters: v => v / 0.0254, history: 'Дюйм (от нидерл. duim — "большой палец") — равен 2,54 см. Британская система, используется в технике США. Стандартизирован в 1958 году.' }
+    };
+    
+    const massUnits = {
+        'мг': { name: 'Миллиграммы (мг)', toGrams: v => v / 1000, fromGrams: v => v * 1000, history: 'Миллиграмм — 1/1000 грамма. Термин произошёл от лат. mille — тысяча.' },
+        'г': { name: 'Граммы (г)', toGrams: v => v, fromGrams: v => v, history: 'Грамм — это единица измерения массы в метрической системе, равная одной тысячной доле килограмма (1 г = 0,001 кг). Название происходит от позднелатинского gramma (мелкая единица веса), а та, в свою очередь, — от греческого grámma (буква, значок, маленький вес).' },
+        'кг': { name: 'Килограммы (кг)', toGrams: v => v * 1000, fromGrams: v => v / 1000, history: 'Килограмм — основная единица массы СИ. С 2019 года привязан к постоянной Планка. Раньше эталон — платино-иридиевый цилиндр.' },
+        'ц': { name: 'Центнеры (ц)', toGrams: v => v * 100000, fromGrams: v => v / 100000, history: 'Центнер (от лат. centum — сто) равен 100 кг. Часто используется в сельском хозяйстве Германии, России.' },
+        'т': { name: 'Тонны (т)', toGrams: v => v * 1000000, fromGrams: v => v / 1000000, history: 'Тонна (от лат. tunna — бочка). Метрическая тонна = 1000 кг. Появилась в промышленности в XIX веке.' },
+        'унция': { name: 'Унции (oz)', toGrams: v => v * 28.349523125, fromGrams: v => v / 28.349523125, history: 'Стандартная (международная) унция, используемая в США и других англоязычных странах для измерения продуктов или веса посылок, равна 28,35 грамма (это 1/16 фунта).' },
+        'фунт': { name: 'Фунты (lb)', toGrams: v => v * 453.59237, fromGrams: v => v / 453.59237, history: 'Фунт (лат. libra) — древнеримская единица. Современный международный фунт = 453,59237 г. Принят в США, Великобритании.' }
+    };
+    
+    const tempUnits = {
+        '°C': { name: 'Цельсий (°C)', toCelsius: v => v, fromCelsius: v => v, history: 'Шкала Цельсия (Андерс Цельсий, 1742): 0°C — точка замерзания воды, 100°C — кипение. Самая распространённая шкала в мире.' },
+        '°F': { name: 'Фаренгейт (°F)', toCelsius: v => (v - 32) * 5/9, fromCelsius: v => v * 9/5 + 32, history: 'Шкала Фаренгейта (1724): 0°F — смесь льда, воды и нашатыря, 96°F — температура тела. В США до сих пор используется.' },
+        'K': { name: 'Кельвин (K)', toCelsius: v => v - 273.15, fromCelsius: v => v + 273.15, history: 'Кельвин (лорд Кельвин, 1848). Абсолютный ноль 0 K (-273,15°C). Единица термодинамической температуры в СИ.' }
+    };
+    
+    const volumeUnits = {
+        'мл': { name: 'Миллилитры (мл)', toLiters: v => v / 1000, fromLiters: v => v * 1000, history: 'Миллилитр — это единица измерения объема в метрической системе, равная одной тысячной доле литра (1 мл = 0,001 л). Название происходит от приставки «милли-» (одна тысячная) и единицы «литр».' },
+        'см³': { name: 'Кубические сантиметры (см³)', toLiters: v => v / 1000, fromLiters: v => v * 1000, history: 'Кубический сантиметр равен объёму куба со стороной 1 см. Тесно связан с миллилитром.' },
+        'дм³': { name: 'Кубические дециметры (дм³)', toLiters: v => v, fromLiters: v => v, history: 'Кубический дециметр (литр) — объём куба 10 см. В 1901–1964 литр определялся как 1 кг воды.' },
+        'л': { name: 'Литры (л)', toLiters: v => v, fromLiters: v => v, history: 'Литр (фр. litre) — метрическая единица объёма. С 1964 года 1 л = 1 дм³. Название от греч. litra — мера веса.' },
+        'м³': { name: 'Кубические метры (м³)', toLiters: v => v * 1000, fromLiters: v => v / 1000, history: 'Кубический метр — объём куба со стороной 1 метр. Основная единица объёма в СИ.' },
+        'галлон': { name: 'Галлоны (гал)',  toLiters: v => v * 3.78541, fromLiters: v => v / 3.78541, history: 'Американский галлон = 3,78541 л; английский (имперский) галлон ≈ 4,546 л. История из измерения вина и зерна в средневековье.' },
+        'баррель': { name: 'Баррели (барр)',  toLiters: v => v * 158.987, fromLiters: v => v / 158.987, history: 'Нефтяной баррель — 158,987 л. Появился в Пенсильвании в XIX веке как стандартная бочка для перевозки нефти.' }
+    };
+    
+    let currentCategory = 'length';
+    let currentModalContext = { unitKey: '', side: '' };
+    
+    function getUnitsForCategory(cat) {
+        switch(cat) {
+            case 'length': return lengthUnits;
+            case 'mass': return massUnits;
+            case 'temp': return tempUnits;
+            case 'volume': return volumeUnits;
+            default: return lengthUnits;
+        }
+    }
+    
+    function getConvertFunction(cat) {
+        switch(cat) {
+            case 'length': return (value, from, to) => lengthUnits[from].toMeters(value, lengthUnits) && lengthUnits[to].fromMeters(lengthUnits[from].toMeters(value));
+            case 'mass': return (value, from, to) => massUnits[from].toGrams(value) && massUnits[to].fromGrams(massUnits[from].toGrams(value));
+            case 'temp': return (value, from, to) => tempUnits[from].toCelsius(value) && tempUnits[to].fromCelsius(tempUnits[from].toCelsius(value));
+            case 'volume': return (value, from, to) => volumeUnits[from].toLiters(value) && volumeUnits[to].fromLiters(volumeUnits[from].toLiters(value));
+            default: return null;
+        }
+    }
+    function getFormula(fromUnit, toUnit, category) {
+        const unitsMap = getUnitsForCategory(category);
+        const fromName = unitsMap[fromUnit]?.name || fromUnit;
+        const toName = unitsMap[toUnit]?.name || toUnit;
+        
+        const formulas = {
+            length: `${fromName} → метры → ${toName}<br>Формула: ${fromName} × ${getLengthFactor(fromUnit, toUnit)} = ${toName}`,
+            mass: `${fromName} → граммы → ${toName}<br>Формула: ${fromName} × ${getMassFactor(fromUnit, toUnit)} = ${toName}`,
+            temp: getTempFormula(fromUnit, toUnit, fromName, toName),
+            volume: `${fromName} → литры → ${toName}<br>Формула: ${fromName} × ${getVolumeFactor(fromUnit, toUnit)} = ${toName}`
+        };
+        
+        return formulas[category] || `Конвертация ${fromName} → ${toName} по стандартным коэффициентам`;
+    }
+    
+    function getLengthFactor(from, to) {
+        const factors = {
+            'мм→см': 0.1, 'мм→дм': 0.01, 'мм→м': 0.001, 'мм→км': 0.000001, 'мм→миля': 0.000000621371, 'мм→дюйм': 0.0393701,
+            'см→мм': 10, 'см→дм': 0.1, 'см→м': 0.01, 'см→км': 0.00001, 'см→миля': 0.0000062137, 'см→дюйм': 0.393701,
+            'дм→мм': 100, 'дм→см': 10, 'дм→м': 0.1, 'дм→км': 0.0001, 'дм→миля': 0.0000621371, 'дм→дюйм': 3.93701,
+            'м→мм': 1000, 'м→см': 100, 'м→дм': 10, 'м→км': 0.001, 'м→миля': 0.000621371, 'м→дюйм': 39.3701,
+            'км→мм': 1000000, 'км→см': 100000, 'км→дм': 10000, 'км→м': 1000, 'км→миля': 0.621371, 'км→дюйм': 39370.1,
+            'миля→мм': 1609344, 'миля→см': 160934.4, 'миля→дм': 16093.44, 'миля→м': 1609.344, 'миля→км': 1.609344, 'миля→дюйм': 63360,
+            'дюйм→мм': 25.4, 'дюйм→см': 2.54, 'дюйм→дм': 0.254, 'дюйм→м': 0.0254, 'дюйм→км': 0.0000254, 'дюйм→миля': 0.0000157828
+        };
+        return factors[`${from}→${to}`] || 'коэффициент';
+    }
+    
+    function getMassFactor(from, to) {
+        const factors = {
+            'мг→г': 0.001, 'мг→кг': 0.000001, 'мг→ц': 1e-8, 'мг→т': 1e-9, 'мг→унция': 0.000035274, 'мг→фунт': 0.00000220462,
+            'г→мг': 1000, 'г→кг': 0.001, 'г→ц': 0.00001, 'г→т': 0.000001, 'г→унция': 0.035274, 'г→фунт': 0.00220462,
+            'кг→мг': 1000000, 'кг→г': 1000, 'кг→ц': 0.01, 'кг→т': 0.001, 'кг→унция': 35.274, 'кг→фунт': 2.20462,
+            'ц→мг': 1e8, 'ц→г': 100000, 'ц→кг': 100, 'ц→т': 0.1, 'ц→унция': 3527.4, 'ц→фунт': 220.462,
+            'т→мг': 1e9, 'т→г': 1e6, 'т→кг': 1000, 'т→ц': 10, 'т→унция': 35274, 'т→фунт': 2204.62,
+            'унция→мг': 28349.5, 'унция→г': 28.3495, 'унция→кг': 0.0283495, 'унция→ц': 0.000283495, 'унция→т': 0.0000283495, 'унция→фунт': 0.0625,
+            'фунт→мг': 453592, 'фунт→г': 453.592, 'фунт→кг': 0.453592, 'фунт→ц': 0.00453592, 'фунт→т': 0.000453592, 'фунт→унция': 16
+        };
+        return factors[`${from}→${to}`] || 'коэффициент';
+    }
+    
+    function getTempFormula(from, to, fromName, toName) {
+        if (from === '°C' && to === '°F') return `${fromName} → ${toName}<br>Формула: ${fromName} × 9/5 + 32 = ${toName}<br>Пример: 100°C × 9/5 + 32 = 212°F`;
+        if (from === '°C' && to === 'K') return `${fromName} → ${toName}<br>Формула: ${fromName} + 273.15 = ${toName}<br>Пример: 0°C + 273.15 = 273.15K`;
+        if (from === '°F' && to === '°C') return `${fromName} → ${toName}<br>Формула: (${fromName} - 32) × 5/9 = ${toName}<br>Пример: (212°F - 32) × 5/9 = 100°C`;
+        if (from === '°F' && to === 'K') return `${fromName} → ${toName}<br>Формула: (${fromName} - 32) × 5/9 + 273.15 = ${toName}`;
+        if (from === 'K' && to === '°C') return `${fromName} → ${toName}<br>Формула: ${fromName} - 273.15 = ${toName}<br>Пример: 273.15K - 273.15 = 0°C`;
+        if (from === 'K' && to === '°F') return `${fromName} → ${toName}<br>Формула: (${fromName} - 273.15) × 9/5 + 32 = ${toName}`;
+        return `${fromName} → ${toName}<br>Формула: применяется стандартная температурная шкала`;
+    }
+    
+    function getVolumeFactor(from, to) {
+        const factors = {
+            'мл→см³': 1, 'мл→дм³': 0.001, 'мл→л': 0.001, 'мл→м³': 0.000001, 'мл→галлон': 0.000264172, 'мл→баррель': 0.00000628981,
+            'см³→мл': 1, 'см³→дм³': 0.001, 'см³→л': 0.001, 'см³→м³': 0.000001, 'см³→галлон': 0.000264172, 'см³→баррель': 0.00000628981,
+            'дм³→мл': 1000, 'дм³→см³': 1000, 'дм³→л': 1, 'дм³→м³': 0.001, 'дм³→галлон': 0.264172, 'дм³→баррель': 0.00628981,
+            'л→мл': 1000, 'л→см³': 1000, 'л→дм³': 1, 'л→м³': 0.001, 'л→галлон': 0.264172, 'л→баррель': 0.00628981,
+            'м³→мл': 1e6, 'м³→см³': 1e6, 'м³→дм³': 1000, 'м³→л': 1000, 'м³→галлон': 264.172, 'м³→баррель': 6.28981,
+            'галлон→мл': 3785.41, 'галлон→см³': 3785.41, 'галлон→дм³': 3.78541, 'галлон→л': 3.78541, 'галлон→м³': 0.00378541, 'галлон→баррель': 0.0238095,
+            'баррель→мл': 158987, 'баррель→см³': 158987, 'баррель→дм³': 158.987, 'баррель→л': 158.987, 'баррель→м³': 0.158987, 'баррель→галлон': 42
+        };
+        return factors[`${from}→${to}`] || 'коэффициент';
+    }
+    
+    function updateFormulaDisplay() {
+        const fromUnit = document.getElementById('from-unit').value;
+        const toUnit = document.getElementById('to-unit').value;
+        const inputVal = parseFloat(document.getElementById('input-value').value);
+        
+        if (fromUnit && toUnit && !isNaN(inputVal)) {
+            const formula = getFormula(fromUnit, toUnit, currentCategory);
+            document.getElementById('formulaText').innerHTML = formula;
+            
+            const result = convertValue(inputVal, fromUnit, toUnit, currentCategory);
+            if (!isNaN(result)) {
+                const unitsMap = getUnitsForCategory(currentCategory);
+                const fromName = unitsMap[fromUnit]?.name || fromUnit;
+                const toName = unitsMap[toUnit]?.name || toUnit;
+                document.getElementById('formulaText').innerHTML += `<br><br>Пример: ${inputVal} ${fromName} = ${result} ${toName}`;
+            }
+        }
+    }
+    
+    function convertValue(value, fromUnit, toUnit, category) {
+        const unitMap = getUnitsForCategory(category);
+        if (category === 'length') {
+            const meters = unitMap[fromUnit].toMeters(value);
+            return unitMap[toUnit].fromMeters(meters);
+        } else if (category === 'mass') {
+            const grams = unitMap[fromUnit].toGrams(value);
+            return unitMap[toUnit].fromGrams(grams);
+        } else if (category === 'temp') {
+            const celsius = unitMap[fromUnit].toCelsius(value);
+            return unitMap[toUnit].fromCelsius(celsius);
+        } else if (category === 'volume') {
+            const liters = unitMap[fromUnit].toLiters(value);
+            return unitMap[toUnit].fromLiters(liters);
+        }
+        return NaN;
+    }
+    
+    function populateSelects() {
+        const unitsMap = getUnitsForCategory(currentCategory);
+        const fromSelect = document.getElementById('from-unit');
+        const toSelect = document.getElementById('to-unit');
+        const unitKeys = Object.keys(unitsMap);
+        
+        fromSelect.innerHTML = '';
+        toSelect.innerHTML = '';
+        
+        unitKeys.forEach(key => {
+            const unitData = unitsMap[key];
+            const optionText = `${unitData.name}`;
+            const opt1 = document.createElement('option');
+            opt1.value = key;
+            opt1.textContent = optionText;
+            const opt2 = document.createElement('option');
+            opt2.value = key;
+            opt2.textContent = optionText;
+            fromSelect.appendChild(opt1);
+            toSelect.appendChild(opt2);
+        });
+        
+        if (currentCategory === 'length') { fromSelect.value = 'м'; toSelect.value = 'см'; }
+        else if (currentCategory === 'mass') { fromSelect.value = 'кг'; toSelect.value = 'г'; }
+        else if (currentCategory === 'temp') { fromSelect.value = '°C'; toSelect.value = '°F'; }
+        else if (currentCategory === 'volume') { fromSelect.value = 'л'; toSelect.value = 'мл'; }
+    }
+    
+    function convertAndDisplay() {
+        const inputElem = document.getElementById('input-value');
+        let rawValue = parseFloat(inputElem.value);
+        if (isNaN(rawValue)) {
+            document.getElementById('result-value').textContent = '?';
+            return;
+        }
+        const fromUnit = document.getElementById('from-unit').value;
+        const toUnit = document.getElementById('to-unit').value;
+        if (!fromUnit || !toUnit) return;
+        const result = convertValue(rawValue, fromUnit, toUnit, currentCategory);
+        if (isNaN(result)) {
+            document.getElementById('result-value').textContent = 'Ошибка';
+        } else {
+            document.getElementById('result-value').textContent = result;
+        }
+         updateFormulaDisplay();
+    }
+    
+    function showHistory(unitKey, side) {
+        const unitsMap = getUnitsForCategory(currentCategory);
+        if (!unitsMap[unitKey]) return;
+        const unitData = unitsMap[unitKey];
+        const categoryName = 
+            currentCategory === 'length' ? 'Длина' :
+            currentCategory === 'mass' ? 'Масса' :
+            currentCategory === 'temp' ? 'Температура' : 'Объём';
+        
+        const modalTitle = `${unitData.emoji || '📖'} ${unitData.name}`;
+        let historicalText = unitData.history || `История единицы "${unitData.name}" пока не задокументирована, но она широко используется в ${categoryName}.`;
+        
+        const extraInfo = {
+            'миля': ' ⚓ Морская миля отличается: 1852 метра.',
+            'унция': ' 💍 Тройская унция для драгметаллов ≈ 31,1 г.',
+            'галлон': ' 🍺 Британский галлон равен 4,54609 л.',
+            'баррель': ' 🛢️ 1 баррель = 42 галлона США.',
+            'K': ' ❄️ Абсолютный ноль −273,15 °C — самая низкая температура.'
+        };
+        if (extraInfo[unitKey]) historicalText += extraInfo[unitKey];
+        
+        document.getElementById('modal-title').innerHTML = `${unitData.name}`;
+        document.getElementById('modal-body').innerHTML = `
+            <p><strong>📌 Категория:</strong> ${categoryName}</p>
+            <p><strong>📖 Историческая справка:</strong><br> ${historicalText}</p>
+            <p><strong>🔍 ${side === 'from' ? 'Исходная' : 'Целевая'} единица:</strong> ${unitData.name}</p>
+            <p>✨${side === 'from' ? 'Конвертация из этой единицы' : 'Конвертация в эту единицу'} осуществляется по международным стандартам.</p>
+        `;
+        const modal = document.getElementById('historyModal');
+        modal.style.display = 'flex';
+    }
+    
+    function switchCategory(category) {
+        currentCategory = category;
+        document.querySelectorAll('.cat-btn').forEach(btn => {
+            if (btn.getAttribute('data-cat') === category) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        populateSelects();
+        convertAndDisplay();
+    }
+    
+    function bindEvents() {
+        const inputVal = document.getElementById('input-value');
+        const fromSelect = document.getElementById('from-unit');
+        const toSelect = document.getElementById('to-unit');
+        const formulaBtn = document.getElementById('showFormulaBtn');
+        const formulaDisplay = document.getElementById('formulaDisplay');
+    
+    formulaBtn.addEventListener('click', () => {
+        if (formulaDisplay.style.display === 'none') {
+            formulaDisplay.style.display = 'block';
+            formulaBtn.textContent = 'Скрыть формулу';
+            updateFormulaDisplay();
+        } else {
+            formulaDisplay.style.display = 'none';
+            formulaBtn.textContent = 'Показать формулу конвертации';
+        }
+    });
+        inputVal.addEventListener('input', convertAndDisplay);
+        fromSelect.addEventListener('change', convertAndDisplay);
+        toSelect.addEventListener('change', convertAndDisplay);
+        
+        document.querySelectorAll('.cat-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const cat = btn.getAttribute('data-cat');
+                switchCategory(cat);
+            });
+            
+        });
+        
+        document.querySelectorAll('.info-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const side = btn.getAttribute('data-side');
+                const selectElem = side === 'from' ? document.getElementById('from-unit') : document.getElementById('to-unit');
+                const selectedUnitKey = selectElem.value;
+                if (selectedUnitKey) {
+                    showHistory(selectedUnitKey, side);
+                } else {
+                    alert('Выберите единицу измерения');
+                }
+            });
+        });
+        
+        const modal = document.getElementById('historyModal');
+        const closeBtn = document.getElementById('closeModalBtn');
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    }
+    
+    function init() {
+        bindEvents();
+        populateSelects();
+        convertAndDisplay();
+    }
+    
+    init();
+</script>
+</body>
+</html>
